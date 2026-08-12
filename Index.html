@@ -1,1 +1,675 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<title>Feuille de match — Suivi solo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --pitch-dark: #142B1E;
+    --pitch: #1E4B2E;
+    --pitch-light: #3C7A54;
+    --chalk: #F6F4EC;
+    --chalk-line: #E4E0D2;
+    --card: #FFFFFF;
+    --ink: #1B1B16;
+    --muted: #8A8578;
+    --amber: #E2A33B;
+    --amber-dark: #C6862A;
+    --red-card: #C1443B;
+    --shadow: 0 1px 2px rgba(20,43,30,0.06), 0 4px 14px rgba(20,43,30,0.06);
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; background: var(--chalk); color: var(--ink);
+    font-family: 'Inter', -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
+  }
+  body { padding-bottom: calc(78px + env(safe-area-inset-bottom)); }
+  .display { font-family: 'Bebas Neue', 'Inter', sans-serif; letter-spacing: 0.02em; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  button { font-family: inherit; }
+  #app { max-width: 560px; margin: 0 auto; padding: 0 14px; }
+
+  /* ---- Header ---- */
+  .hero {
+    background: linear-gradient(160deg, var(--pitch-dark), var(--pitch) 75%);
+    margin: 0 -14px 14px -14px;
+    padding: calc(20px + env(safe-area-inset-top)) 20px 22px 20px;
+    border-radius: 0 0 22px 22px;
+    color: var(--chalk);
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(90deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 46px);
+    pointer-events: none;
+  }
+  .hero-top { display:flex; justify-content:space-between; align-items:flex-start; position:relative; }
+  .hero-eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em; color: rgba(246,244,236,0.6); font-weight: 600; }
+  .hero-title { font-size: 34px; line-height: 1; margin: 4px 0 2px 0; }
+  .hero-sub { font-size: 13px; color: rgba(246,244,236,0.72); }
+  .badge-num {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--amber); color: var(--pitch-dark);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Bebas Neue'; font-size: 20px; flex-shrink:0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  }
+
+  /* ---- Matchday toggle ---- */
+  .matchday-row { display:flex; gap:8px; margin-top:16px; position:relative; }
+  .kit-btn {
+    flex:1; border: 1.5px solid rgba(246,244,236,0.25); background: rgba(0,0,0,0.15);
+    color: rgba(246,244,236,0.85); border-radius: 12px; padding: 10px 8px;
+    font-family:'Bebas Neue'; font-size:16px; letter-spacing:0.05em; text-align:center;
+    cursor:pointer; transition: all .15s ease;
+  }
+  .kit-btn.active { background: var(--amber); color: var(--pitch-dark); border-color: var(--amber); }
+  .kit-sub { font-size: 9px; font-family:'Inter'; text-transform:uppercase; letter-spacing:0.08em; opacity:0.75; display:block; margin-top:2px;}
+
+  /* ---- Tabs ---- */
+  .tabbar {
+    position: fixed; bottom:0; left:0; right:0;
+    background: var(--pitch-dark);
+    padding: 8px 10px calc(10px + env(safe-area-inset-bottom)) 10px;
+    display:flex; gap: 4px; z-index: 50;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .tab-item {
+    flex:1; background:none; border:none; color: rgba(246,244,236,0.5);
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    padding: 6px 0; border-radius: 10px; cursor:pointer;
+  }
+  .tab-item.active { color: var(--amber); }
+  .tab-item .dot { width:5px; height:5px; border-radius:50%; background: var(--amber); opacity:0; }
+  .tab-item.active .dot { opacity:1; }
+  .tab-label { font-size: 11px; font-weight:600; letter-spacing:0.02em; }
+
+  /* ---- Day cards ---- */
+  .section-label {
+    font-size: 12px; text-transform:uppercase; letter-spacing:0.1em; color: var(--muted);
+    font-weight:700; margin: 18px 4px 8px 4px;
+  }
+  .day-card {
+    background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+    margin-bottom: 10px; overflow:hidden; border: 1px solid var(--chalk-line);
+  }
+  .day-card.today { border: 1.5px solid var(--amber); }
+  .day-head { display:flex; align-items:center; gap:12px; padding: 13px 14px; cursor:pointer; }
+  .type-badge {
+    width: 38px; height: 38px; border-radius: 50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Bebas Neue'; font-size:16px; color:#fff;
+  }
+  .day-info { flex:1; min-width:0; }
+  .day-name-row { display:flex; align-items:baseline; gap:8px; }
+  .day-name { font-family:'Bebas Neue'; font-size: 19px; letter-spacing:0.02em; }
+  .day-date { font-size: 11px; color: var(--muted); }
+  .day-title { font-size: 13.5px; color: var(--ink); margin-top:1px; font-weight:500; }
+  .today-pill {
+    font-size:9px; background: var(--amber); color:var(--pitch-dark); font-weight:700;
+    padding: 2px 6px; border-radius: 20px; text-transform:uppercase; letter-spacing:0.05em;
+  }
+  .status-chip {
+    font-size: 11px; font-weight:700; padding: 5px 10px; border-radius: 20px;
+    white-space:nowrap; flex-shrink:0; text-transform:uppercase; letter-spacing:0.03em;
+  }
+  .chevron { color: var(--muted); font-size: 12px; margin-left:4px; transition: transform .2s ease; flex-shrink:0;}
+  .chevron.open { transform: rotate(90deg); }
+
+  .day-body { display:none; padding: 0 14px 16px 14px; border-top: 1px solid var(--chalk-line); }
+  .day-body.open { display:block; }
+  .exo-section-title { font-size: 11.5px; font-weight:700; color: var(--pitch); text-transform:uppercase; letter-spacing:0.05em; margin: 14px 0 6px 0; }
+  .exo-item { display:flex; align-items:flex-start; gap:10px; padding: 6px 0; font-size: 14px; line-height:1.35; }
+  .exo-check {
+    width:20px; height:20px; border-radius:6px; border: 1.5px solid var(--chalk-line);
+    flex-shrink:0; margin-top:1px; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; background:#fff;
+  }
+  .exo-check.checked { background: var(--pitch); border-color: var(--pitch); color:#fff; font-size:12px; font-weight:700; }
+  .exo-item.checked-text { color: var(--muted); text-decoration: line-through; }
+
+  .status-row { display:flex; gap:6px; margin-top:14px; flex-wrap:wrap; }
+  .status-btn {
+    flex:1; min-width: 68px; border:1.5px solid var(--chalk-line); background:#fff;
+    border-radius: 10px; padding: 8px 4px; font-size: 12px; font-weight:600; color: var(--muted);
+    cursor:pointer; text-align:center;
+  }
+  .status-btn.sel-todo.selected { background: var(--chalk-line); color: var(--ink); border-color:var(--chalk-line);}
+  .status-btn.sel-fait.selected { background: var(--pitch); color:#fff; border-color:var(--pitch); }
+  .status-btn.sel-adapte.selected { background: var(--amber); color:var(--pitch-dark); border-color:var(--amber); }
+  .status-btn.sel-saute.selected { background: var(--red-card); color:#fff; border-color:var(--red-card); }
+
+  textarea.notes {
+    width:100%; margin-top:12px; border: 1px solid var(--chalk-line); border-radius: 10px;
+    padding: 10px; font-family:'Inter'; font-size:13.5px; resize:vertical; min-height:52px;
+    background: var(--chalk); color:var(--ink);
+  }
+  .friday-toggle { display:flex; gap:8px; margin-bottom: 12px; }
+  .mini-toggle {
+    flex:1; border:1.5px solid var(--chalk-line); background:#fff; border-radius:10px;
+    padding:8px; font-size:12px; font-weight:600; color:var(--muted); cursor:pointer; text-align:center;
+  }
+  .mini-toggle.selected { background: var(--pitch); color:#fff; border-color:var(--pitch); }
+
+  /* ---- Tests tab ---- */
+  .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; margin-bottom: 12px; border:1px solid var(--chalk-line); }
+  .field-grid { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .field label { font-size: 11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:700; display:block; margin-bottom:4px; }
+  .field input {
+    width:100%; border:1px solid var(--chalk-line); border-radius:8px; padding: 9px 10px;
+    font-family:'JetBrains Mono'; font-size:14px; background: var(--chalk); color: var(--ink);
+  }
+  .btn-primary {
+    width:100%; background: var(--pitch); color:#fff; border:none; border-radius:12px;
+    padding: 13px; font-size:14px; font-weight:700; margin-top:14px; cursor:pointer;
+    text-transform:uppercase; letter-spacing:0.04em;
+  }
+  .btn-primary:active { background: var(--pitch-dark); }
+  .test-entry { display:flex; justify-content:space-between; align-items:center; padding:12px 0; border-top:1px solid var(--chalk-line); }
+  .test-entry:first-child { border-top:none; }
+  .test-date { font-size:12px; color:var(--muted); font-weight:600; }
+  .test-stats { display:flex; gap:14px; margin-top:4px; flex-wrap:wrap; }
+  .stat-item { font-family:'JetBrains Mono'; font-size:13px; }
+  .stat-item span { display:block; font-family:'Inter'; font-size:9px; color:var(--muted); text-transform:uppercase; }
+  .del-btn { background:none; border:none; color: var(--red-card); font-size: 18px; cursor:pointer; padding:4px 8px; }
+  .empty-state { text-align:center; padding: 30px 10px; color: var(--muted); font-size: 13.5px; }
+  .empty-state .display { font-size: 24px; color: var(--ink); margin-bottom:6px; }
+
+  /* ---- Historique tab ---- */
+  .week-row { padding: 14px 0; border-top: 1px solid var(--chalk-line); }
+  .week-row:first-child { border-top:none; }
+  .week-row-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .week-id { font-family:'Bebas Neue'; font-size:16px; }
+  .dots-row { display:flex; gap:6px; }
+  .dot-day { width: 26px; height: 26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:#fff; }
+
+  .loading { text-align:center; padding: 40px 0; color: var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+const SESSION_TYPES = {
+  club:       { label: 'Club',       color: '#1E4B2E', letter: 'C' },
+  force:      { label: 'Force',      color: '#E2A33B', letterColor:'#142B1E', letter: 'F' },
+  vitesse:    { label: 'Vitesse',    color: '#3C7A54', letter: 'V' },
+  endurance:  { label: 'Endurance',  color: '#3C7A54', letter: 'E' },
+  activation: { label: 'Activation', color: '#8A8578', letter: 'A' },
+  repos:      { label: 'Repos',      color: '#B9B4A4', letter: 'R' },
+  match:      { label: 'Match',      color: '#C1443B', letter: 'M' },
+};
+
+const FORCE_EXOS = [
+  { section: 'Échauffement général (3 min)', items: ['Corde à sauter ou talons-fesses sur place — 2 min, allure facile (monter progressivement la fréquence cardiaque)', 'Cercles de bras — 10 rotations avant + 10 arrière'] },
+  { section: 'Mobilité articulaire (4 min)', items: ['Chat-vache (dos rond / dos creux à 4 pattes) — 8-10 reps lentes', 'Rotations de hanches debout — 8 par sens et par jambe', 'Cercles de chevilles — 10 par sens, chaque pied', 'Fentes marchées avec rotation du buste vers la jambe avant — 6/jambe', 'Squat sumo + ouverture de hanche (genou vers l\'extérieur) — 8 reps'] },
+  { section: 'Activation avant circuit (2-3 min)', items: ['Montées de genoux sur place — 20s', 'Talons-fesses sur place — 20s', 'Squats sautés légers — 5 reps pour réveiller les jambes', '2-3 pas chassés dynamiques sur place'] },
+  { section: 'Circuit — 3 tours, 40s effort / 20s repos, 1-2 min entre tours', items: ['Squat poids du corps (tempo contrôlé)', 'Pompes', 'Fentes alternées', 'Tractions (viser 4-5 propres plutôt que forcer)', 'Rowing élastique', 'Gainage planche'] },
+  { section: 'Finisher jambes — 2 tours', items: ['Squat bulgare / fente arrière élevée (40s/jambe)', 'Pont fessier (40s)'] },
+  { section: 'Étirements statiques post-séance (5-6 min) — chaque position tenue 25-30s, sans forcer ni rebondir', items: ['Quadriceps debout (talon vers la fesse, genoux serrés) — 30s/jambe', 'Ischio-jambiers (jambe tendue devant, buste incliné) — 30s/jambe', 'Fessiers / piriforme (cheville sur le genou opposé, assis ou allongé) — 30s/côté', 'Mollets (fente avant, talon arrière au sol) — 30s/jambe', 'Fléchisseurs de hanche (fente basse, bassin poussé vers l\'avant) — 30s/côté', 'Dos / lombaires (posture de l\'enfant, bras tendus devant) — 30-40s', '30-60s de respiration calme pour clore la séance'] },
+];
+const VITESSE_EXOS = [
+  { section: 'Footing d\'échauffement (3-4 min)', items: ['Footing très léger — 3-4 min pour élever la température corporelle'] },
+  { section: 'Étirements dynamiques — mobilité active, PAS d\'étirement statique avant vitesse (2-3 min)', items: ['Balancés de jambe avant/arrière en tenant un appui — 10/jambe', 'Balancés de jambe latéraux en tenant un appui — 10/jambe', 'Fentes marchées avec bras tendus vers le ciel — 8/jambe', 'Cercles de hanche debout, grande amplitude — 8 par sens/jambe'] },
+  { section: 'Gammes athlétiques — 2 séries de 20m chacune, retour marché', items: ['Montées de genoux', 'Talons-fesses', 'Pas chassés (un sens puis l\'autre)', 'Skipping bas (petits appuis rapides)', 'Montées de genoux croisées (skipping latéral)', 'Foulées bondissantes légères'] },
+  { section: 'Accélérations progressives — 3 lignes droites de 20-30m', items: ['1ère ligne à 60% de vitesse max', '2e ligne à 80% de vitesse max', '3e ligne à 95% de vitesse max — pas encore à fond, juste pour préparer le système nerveux'] },
+  { section: 'Séance', items: ['Sprints courts 10-20m ×4-5 (récup 1-2 min)', 'Bonds horizontaux / sauts — 3 séries de 5-6', 'Corde à sauter (fréquence appuis) 3-4×30s', 'Gainage explosif court'] },
+  { section: 'Retour au calme et étirements (5 min) — statique cette fois, 25-30s par position', items: ['Marche lente ou footing très léger — 2 min', 'Mollets (fente avant, talon arrière au sol) — 25s/jambe', 'Ischio-jambiers (jambe tendue, buste incliné) — 25s/jambe', 'Quadriceps debout — 25s/jambe', 'Fléchisseurs de hanche (fente basse) — 25s/côté'] },
+];
+const ENDURANCE_EXOS = [
+  { section: 'Footing d\'échauffement (5-6 min)', items: ['Footing très léger, allure endurance fondamentale (9-10,5 km/h) — 5-6 min, on doit pouvoir parler sans être essoufflé'] },
+  { section: 'Gammes courtes (2-3 min) — 1 série de 20m chacune', items: ['Montées de genoux', 'Talons-fesses', 'Pas chassés', 'Skipping bas'] },
+  { section: 'Mise en jambes avant fractionné (1-2 min)', items: ['2 accélérations progressives de 20m (60% puis 80% de vitesse max)', 'Quelques foulées bondissantes légères'] },
+  { section: 'Séance — Puissance aérobie', items: ['Fractionné 15/15 ou 30/30 à 15-18 km/h (~15-20 min de travail)'] },
+  { section: 'Retour au calme (5-6 min)', items: ['Footing très léger, allure décroissante — 3-4 min (aide à évacuer l\'acide lactique et redescendre progressivement)', 'Marche + respiration profonde — 1-2 min'] },
+  { section: 'Étirements légers post-effort (4-5 min) — tenue courte 20s, sans forcer (le corps est chaud et fatigué)', items: ['Mollets (fente avant) — 20s/jambe', 'Ischio-jambiers (jambe tendue) — 20s/jambe', 'Quadriceps debout — 20s/jambe', 'Fessiers (cheville sur genou opposé) — 20s/côté', 'Hydratation avant de partir'] },
+];
+const ACTIVATION_EXOS = [
+  { section: 'Footing très léger (3-4 min)', items: ['Footing tranquille — 3-4 min, allure de promenade rapide'] },
+  { section: 'Mobilité légère (2-3 min)', items: ['Balancés de jambe avant/arrière — 8/jambe', 'Rotations de hanche debout — 6 par sens', 'Cercles de chevilles — 8 par sens/pied'] },
+  { section: 'Gammes courtes — 1 série de 15-20m chacune, intensité modérée', items: ['Montées de genoux', 'Talons-fesses', 'Pas chassés'] },
+  { section: 'Séance légère — jamais du développement, on reste frais pour le match', items: ['Petits sprints courts 5-10m, intensité modérée, 5-6 changements de direction', 'Technique de course légère', 'Gainage doux 2×20-30s (pas jusqu\'à l\'échec)'] },
+  { section: 'Étirements de décrassage (3-4 min) — tenue 20s, très léger', items: ['Mollets (fente avant) — 20s/jambe', 'Ischio-jambiers (jambe tendue) — 20s/jambe', 'Quadriceps debout — 20s/jambe', 'Respiration calme pour clore la séance'] },
+];
+
+const DAY_LABELS = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+const DAY_KEYS = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+
+function getMonday(date){
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = (day === 0 ? -6 : 1 - day);
+  d.setDate(d.getDate() + diff);
+  d.setHours(0,0,0,0);
+  return d;
+}
+function getISOWeekId(date){
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return d.getUTCFullYear() + '-W' + String(weekNo).padStart(2, '0');
+}
+function fmtDate(date){
+  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+}
+function todayDayIdx(){
+  const day = new Date().getDay();
+  return day === 0 ? 6 : day - 1;
+}
+
+function buildWeekPlan(matchDay, vendrediPresent){
+  const lundi = matchDay === 'samedi'
+    ? { type: 'vitesse', title: 'Vitesse / Explosivité', exos: VITESSE_EXOS }
+    : { type: 'repos', title: 'Repos complet', exos: [] };
+  const vendredi = vendrediPresent
+    ? { type: 'club', title: 'Entraînement club', exos: [] }
+    : { type: 'activation', title: 'Activation légère', exos: ACTIVATION_EXOS };
+  const samedi = matchDay === 'samedi'
+    ? { type: 'match', title: 'Match', exos: [] }
+    : { type: 'repos', title: 'Repos', exos: [] };
+  const dimanche = matchDay === 'dimanche'
+    ? { type: 'match', title: 'Match', exos: [] }
+    : { type: 'repos', title: 'Repos', exos: [] };
+  return [
+    lundi,
+    { type: 'club', title: 'Entraînement club', exos: [] },
+    { type: 'force', title: 'Force (circuit)', exos: FORCE_EXOS },
+    { type: 'endurance', title: 'Puissance aérobie', exos: ENDURANCE_EXOS },
+    vendredi,
+    samedi,
+    dimanche,
+  ];
+}
+
+// ---------------- State ----------------
+let state = {
+  tab: 'semaine',
+  loading: true,
+  weekId: null,
+  weekData: null,
+  openDay: null,
+  tests: [],
+  history: [],
+  historyLoaded: false,
+};
+
+const weekDates = (() => {
+  const monday = getMonday(new Date());
+  return DAY_KEYS.map((k,i) => { const d = new Date(monday); d.setDate(monday.getDate()+i); return d; });
+})();
+
+function defaultDayState(){ return { status: 'todo', notes: '', checks: {} }; }
+function defaultWeekData(){
+  const days = {};
+  DAY_KEYS.forEach(k => days[k] = defaultDayState());
+  return { matchDay: null, vendrediPresent: true, days };
+}
+
+const STORE_PREFIX = 'suivi-foot:';
+const localStore = {
+  get(key){
+    try {
+      const raw = localStorage.getItem(STORE_PREFIX + key);
+      return raw === null ? null : raw;
+    } catch(e) { return null; }
+  },
+  set(key, value){
+    try { localStorage.setItem(STORE_PREFIX + key, value); return true; }
+    catch(e) { console.error('save error', e); return false; }
+  },
+  listKeys(prefix){
+    const out = [];
+    try {
+      for (let i = 0; i < localStorage.length; i++){
+        const k = localStorage.key(i);
+        if (k && k.indexOf(STORE_PREFIX + prefix) === 0) out.push(k.slice(STORE_PREFIX.length));
+      }
+    } catch(e) {}
+    return out;
+  }
+};
+
+function loadWeek(){
+  state.weekId = getISOWeekId(new Date());
+  const raw = localStore.get('week:' + state.weekId);
+  state.weekData = raw ? JSON.parse(raw) : defaultWeekData();
+  const rawTests = localStore.get('tests');
+  state.tests = rawTests ? JSON.parse(rawTests) : [];
+  state.loading = false;
+  render();
+}
+
+function saveWeek(){
+  localStore.set('week:' + state.weekId, JSON.stringify(state.weekData));
+}
+function saveTests(){
+  localStore.set('tests', JSON.stringify(state.tests));
+}
+
+function loadHistory(){
+  if (state.historyLoaded) return;
+  const keys = localStore.listKeys('week:').filter(k => k !== 'week:' + state.weekId);
+  keys.sort().reverse();
+  const top = keys.slice(0, 10);
+  const entries = [];
+  top.forEach(k => {
+    const raw = localStore.get(k);
+    if (raw) entries.push({ weekId: k.replace('week:',''), data: JSON.parse(raw) });
+  });
+  state.history = entries;
+  state.historyLoaded = true;
+  render();
+}
+
+function setMatchDay(day){
+  state.weekData.matchDay = day;
+  render(); saveWeek();
+}
+function setVendredi(present){
+  state.weekData.vendrediPresent = present;
+  render(); saveWeek();
+}
+function toggleDay(key){
+  state.openDay = state.openDay === key ? null : key;
+  render();
+}
+function setStatus(dayKey, status){
+  state.weekData.days[dayKey].status = status;
+  render(); saveWeek();
+}
+function toggleCheck(dayKey, exoKey){
+  const checks = state.weekData.days[dayKey].checks;
+  checks[exoKey] = !checks[exoKey];
+  render(); saveWeek();
+}
+function setNotes(dayKey, val){
+  state.weekData.days[dayKey].notes = val;
+  saveWeek();
+}
+function addTest(entry){
+  state.tests.unshift(entry);
+  saveTests(); render();
+}
+function deleteTest(idx){
+  state.tests.splice(idx,1);
+  saveTests(); render();
+}
+function setTab(tab){
+  state.tab = tab;
+  if (tab === 'historique') loadHistory();
+  render();
+}
+
+function renderHero(){
+  const wd = state.weekData;
+  const monday = weekDates[0], sunday = weekDates[6];
+  return `
+    <div class="hero">
+      <div class="hero-top">
+        <div>
+          <div class="hero-eyebrow">Semaine ${fmtDate(monday)} — ${fmtDate(sunday)}</div>
+          <div class="hero-title">Feuille de match</div>
+          <div class="hero-sub">Suivi solo — ajuste selon ton match</div>
+        </div>
+        <div class="badge-num">${todayDayIdx()+1}</div>
+      </div>
+      <div class="matchday-row">
+        <button class="kit-btn ${wd.matchDay==='samedi'?'active':''}" onclick="setMatchDay('samedi')">SAM
+          <span class="kit-sub">Match samedi</span>
+        </button>
+        <button class="kit-btn ${wd.matchDay==='dimanche'?'active':''}" onclick="setMatchDay('dimanche')">DIM
+          <span class="kit-sub">Match dimanche</span>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function statusLabel(s){
+  return { todo:'À faire', fait:'Fait', adapte:'Adapté', saute:'Sauté' }[s] || 'À faire';
+}
+function statusChipStyle(s){
+  const map = {
+    todo: 'background:var(--chalk-line); color:var(--muted);',
+    fait: 'background:var(--pitch); color:#fff;',
+    adapte: 'background:var(--amber); color:var(--pitch-dark);',
+    saute: 'background:var(--red-card); color:#fff;',
+  };
+  return map[s] || map.todo;
+}
+
+function renderDayCard(key, idx, plan){
+  const wd = state.weekData;
+  const dayState = wd.days[key];
+  const isToday = idx === todayDayIdx();
+  const isOpen = state.openDay === key;
+  const typ = SESSION_TYPES[plan.type];
+  const badgeColor = typ.letterColor ? typ.letterColor : '#fff';
+
+  let exoHtml = '';
+  if (plan.exos.length === 0 && (plan.type === 'club' || plan.type === 'repos' || plan.type === 'match')) {
+    exoHtml = `<div style="padding:14px 0; font-size:13.5px; color:var(--muted);">
+      ${plan.type === 'club' ? 'Séance encadrée par le club — rien à cocher ici.' : plan.type === 'match' ? 'Jour de match. Bonne chance !' : 'Repos complet. Pas de séance prévue.'}
+    </div>`;
+  } else {
+    plan.exos.forEach((sec, si) => {
+      exoHtml += `<div class="exo-section-title">${sec.section}</div>`;
+      sec.items.forEach((item, ii) => {
+        const exoKey = si + '-' + ii;
+        const checked = !!dayState.checks[exoKey];
+        exoHtml += `
+          <div class="exo-item ${checked ? 'checked-text' : ''}">
+            <div class="exo-check ${checked ? 'checked' : ''}" onclick="toggleCheck('${key}','${exoKey}')">${checked ? '✓' : ''}</div>
+            <div>${item}</div>
+          </div>`;
+      });
+    });
+  }
+
+  let fridayToggle = '';
+  if (key === 'vendredi') {
+    fridayToggle = `
+      <div class="friday-toggle">
+        <div class="mini-toggle ${wd.vendrediPresent ? 'selected' : ''}" onclick="setVendredi(true)">Présent au club</div>
+        <div class="mini-toggle ${!wd.vendrediPresent ? 'selected' : ''}" onclick="setVendredi(false)">Absent — activation</div>
+      </div>`;
+  }
+
+  const statuses = ['todo','fait','adapte','saute'];
+  const statusButtons = statuses.map(s => `
+    <div class="status-btn sel-${s} ${dayState.status===s?'selected':''}" onclick="setStatus('${key}','${s}')">${statusLabel(s)}</div>
+  `).join('');
+
+  return `
+    <div class="day-card ${isToday?'today':''}">
+      <div class="day-head" onclick="toggleDay('${key}')">
+        <div class="type-badge" style="background:${typ.color}; color:${badgeColor};">${typ.letter}</div>
+        <div class="day-info">
+          <div class="day-name-row">
+            <div class="day-name">${DAY_LABELS[idx]}</div>
+            <div class="day-date">${fmtDate(weekDates[idx])}</div>
+            ${isToday ? '<span class="today-pill">Aujourd\'hui</span>' : ''}
+          </div>
+          <div class="day-title">${plan.title}</div>
+        </div>
+        <div class="status-chip" style="${statusChipStyle(dayState.status)}">${statusLabel(dayState.status)}</div>
+        <div class="chevron ${isOpen?'open':''}">▶</div>
+      </div>
+      <div class="day-body ${isOpen?'open':''}">
+        ${fridayToggle}
+        ${exoHtml}
+        <div class="status-row">${statusButtons}</div>
+        <textarea class="notes" placeholder="Notes — sensations, poids, chronos..." onchange="setNotes('${key}', this.value)">${dayState.notes || ''}</textarea>
+      </div>
+    </div>
+  `;
+}
+
+function renderSemaine(){
+  const wd = state.weekData;
+  if (!wd.matchDay) {
+    return renderHero() + `
+      <div class="card" style="text-align:center; margin-top:10px;">
+        <div class="display" style="font-size:20px; margin-bottom:6px;">Match samedi ou dimanche ?</div>
+        <div style="font-size:13px; color:var(--muted);">Choisis en haut pour générer ta semaine — lundi et vendredi s'ajustent automatiquement.</div>
+      </div>
+    `;
+  }
+  const plan = buildWeekPlan(wd.matchDay, wd.vendrediPresent);
+  let html = renderHero();
+  html += `<div class="section-label">Ta semaine</div>`;
+  DAY_KEYS.forEach((key, idx) => { html += renderDayCard(key, idx, plan[idx]); });
+  return html;
+}
+
+function renderTests(){
+  let html = `
+    <div class="hero" style="padding-top: calc(20px + env(safe-area-inset-top));">
+      <div class="hero-eyebrow">Bilan</div>
+      <div class="hero-title">Tests</div>
+      <div class="hero-sub">Refais tes tests toutes les 4-6 semaines</div>
+    </div>
+    <div class="card">
+      <div class="display" style="font-size:18px;">Nouveau relevé</div>
+      <div class="field-grid">
+        <div class="field"><label>Date</label><input type="date" id="t-date" value="${new Date().toISOString().slice(0,10)}"></div>
+        <div class="field"><label>VMA (km/h)</label><input type="number" step="0.1" id="t-vma" placeholder="15.0"></div>
+        <div class="field"><label>Tractions (reps)</label><input type="number" id="t-tractions" placeholder="6"></div>
+        <div class="field"><label>Squat 30s (reps)</label><input type="number" id="t-squat" placeholder="12"></div>
+        <div class="field"><label>Sprint 20m (s)</label><input type="number" step="0.01" id="t-sprint" placeholder="3.20"></div>
+        <div class="field"><label>Détente verticale (cm)</label><input type="number" id="t-saut" placeholder="45"></div>
+      </div>
+      <button class="btn-primary" onclick="submitTest()">Enregistrer le relevé</button>
+    </div>
+    <div class="section-label">Historique des tests</div>
+    <div class="card">
+  `;
+  if (state.tests.length === 0) {
+    html += `<div class="empty-state"><div class="display">Aucun test enregistré</div>Ajoute ton premier relevé ci-dessus pour commencer à suivre ta progression.</div>`;
+  } else {
+    state.tests.forEach((t, i) => {
+      html += `
+        <div class="test-entry">
+          <div>
+            <div class="test-date">${new Date(t.date).toLocaleDateString('fr-FR', {day:'numeric', month:'long', year:'numeric'})}</div>
+            <div class="test-stats">
+              ${t.vma ? `<div class="stat-item">${t.vma}<span>VMA km/h</span></div>` : ''}
+              ${t.tractions ? `<div class="stat-item">${t.tractions}<span>Tractions</span></div>` : ''}
+              ${t.squat ? `<div class="stat-item">${t.squat}<span>Squat 30s</span></div>` : ''}
+              ${t.sprint ? `<div class="stat-item">${t.sprint}<span>Sprint 20m</span></div>` : ''}
+              ${t.saut ? `<div class="stat-item">${t.saut}<span>Détente cm</span></div>` : ''}
+            </div>
+          </div>
+          <button class="del-btn" onclick="deleteTest(${i})">✕</button>
+        </div>
+      `;
+    });
+  }
+  html += `</div>`;
+  return html;
+}
+
+function renderHistorique(){
+  let html = `
+    <div class="hero" style="padding-top: calc(20px + env(safe-area-inset-top));">
+      <div class="hero-eyebrow">Régularité</div>
+      <div class="hero-title">Historique</div>
+      <div class="hero-sub">Tes dernières semaines</div>
+    </div>
+  `;
+  if (!state.historyLoaded) {
+    html += `<div class="loading">Chargement...</div>`;
+    return html;
+  }
+  html += `<div class="card">`;
+  if (state.history.length === 0) {
+    html += `<div class="empty-state"><div class="display">Pas encore d'historique</div>Reviens ici la semaine prochaine pour voir ta régularité s'afficher.</div>`;
+  } else {
+    state.history.forEach(h => {
+      let dots = '';
+      DAY_KEYS.forEach(k => {
+        const ds = h.data.days && h.data.days[k] ? h.data.days[k] : { status: 'todo' };
+        const colors = { todo:'#D8D4C8', fait:'#1E4B2E', adapte:'#E2A33B', saute:'#C1443B' };
+        dots += `<div class="dot-day" style="background:${colors[ds.status]||colors.todo};" title="${DAY_LABELS[DAY_KEYS.indexOf(k)]}">${DAY_LABELS[DAY_KEYS.indexOf(k)][0]}</div>`;
+      });
+      html += `
+        <div class="week-row">
+          <div class="week-row-top">
+            <div class="week-id">${h.weekId}</div>
+          </div>
+          <div class="dots-row">${dots}</div>
+        </div>
+      `;
+    });
+  }
+  html += `</div>`;
+  return html;
+}
+
+function renderTabbar(){
+  const tabs = [
+    { key: 'semaine', label: 'Semaine' },
+    { key: 'tests', label: 'Tests' },
+    { key: 'historique', label: 'Historique' },
+  ];
+  return `
+    <div class="tabbar">
+      ${tabs.map(t => `
+        <button class="tab-item ${state.tab===t.key?'active':''}" onclick="setTab('${t.key}')">
+          <div class="dot"></div>
+          <div class="tab-label">${t.label}</div>
+        </button>
+      `).join('')}
+    </div>
+  `;
+}
+
+function render(){
+  const app = document.getElementById('app');
+  if (state.loading) {
+    app.innerHTML = `<div class="loading">Chargement de ta semaine...</div>` + renderTabbar();
+    return;
+  }
+  let body = '';
+  if (state.tab === 'semaine') body = renderSemaine();
+  else if (state.tab === 'tests') body = renderTests();
+  else if (state.tab === 'historique') body = renderHistorique();
+  app.innerHTML = body + renderTabbar();
+}
+
+function submitTest(){
+  const date = document.getElementById('t-date').value || new Date().toISOString().slice(0,10);
+  const vma = document.getElementById('t-vma').value;
+  const tractions = document.getElementById('t-tractions').value;
+  const squat = document.getElementById('t-squat').value;
+  const sprint = document.getElementById('t-sprint').value;
+  const saut = document.getElementById('t-saut').value;
+  if (!vma && !tractions && !squat && !sprint && !saut) return;
+  addTest({ date, vma, tractions, squat, sprint, saut });
+}
+
+window.setMatchDay = setMatchDay;
+window.setVendredi = setVendredi;
+window.toggleDay = toggleDay;
+window.setStatus = setStatus;
+window.toggleCheck = toggleCheck;
+window.setNotes = setNotes;
+window.setTab = setTab;
+window.submitTest = submitTest;
+window.deleteTest = deleteTest;
+
+loadWeek();
+</script>
+</body>
+</html>
 
